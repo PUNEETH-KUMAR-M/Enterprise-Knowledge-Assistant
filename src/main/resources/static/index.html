@@ -708,14 +708,12 @@
             if (existingTyping) {
                 existingTyping.remove();
             }
-            
-            if (message && message !== '🤔 Thinking...') {
-                const typingDiv = document.createElement('div');
-                typingDiv.className = 'typing-indicator message bot';
-                typingDiv.textContent = message;
-                document.getElementById('chatMessages').appendChild(typingDiv);
-                document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
-            }
+
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'typing-indicator message bot';
+            typingDiv.textContent = message || '🤔 Thinking...';
+            document.getElementById('chatMessages').appendChild(typingDiv);
+            document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
         }
 
         // Chat Functions
