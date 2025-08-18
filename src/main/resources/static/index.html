@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AiBot - Document Q&A System</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .user-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+        }
+
+        .user-info.hidden {
+            display: none;
+        }
+
+        .main-content {
+            display: flex;
+            min-height: 600px;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            padding: 30px;
+            border-right: 1px solid #e9ecef;
+        }
+
+        .content {
+            flex: 1;
+            padding: 30px;
+        }
+
+        .auth-section {
+            margin-bottom: 30px;
+        }
+
+        .auth-section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #495057;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: transform 0.2s;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .document-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .document-item {
+            padding: 15px;
+            border-bottom: 1px solid #e9ecef;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .document-item:hover {
+            background: #f8f9fa;
+        }
+
+        .document-item:last-child {
+            border-bottom: none;
+        }
+
+        .document-name {
+            font-weight: 500;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .document-meta {
+            font-size: 12px;
+            color: #6c757d;
+        }
+
+        .chat-container {
+            height: 400px;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            max-width: 80%;
+        }
+
+        .message.user {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+        }
+
+        .message.bot {
+            background: #f8f9fa;
+            color: #2c3e50;
+        }
+
+        .chat-input {
+            display: flex;
+            padding: 15px;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #e9ecef;
+            border-radius: 20px;
+            margin-right: 10px;
+        }
+
+        .chat-input button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+        }
+
+        .file-upload {
+            border: 2px dashed #e9ecef;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .file-upload:hover {
+            border-color: #667eea;
+        }
+
+        .file-upload input[type="file"] {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+
+        .typing-indicator {
+            opacity: 0.7;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="user-info hidden" id="headerUserInfo">
+                👤 <span id="headerUsername"></span>
+            </div>
+            <h1>🤖 AiBot</h1>
+            <p>Intelligent Document Q&A System</p>
+        </div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <!-- Authentication Section -->
+                <div class="auth-section">
+                    <h3>🔐 Authentication</h3>
+                    <div id="loginForm">
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input type="text" id="username" placeholder="Enter username">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" placeholder="Enter password">
+                        </div>
+                        <button class="btn" onclick="login()">Login</button>
+                        <button class="btn btn-secondary" onclick="showRegisterForm()">Register</button>
+                    </div>
+
+                    <div id="registerForm" class="hidden">
+                        <div class="form-group">
+                            <label for="regUsername">Username</label>
+                            <input type="text" id="regUsername" placeholder="Enter username">
+                        </div>
+                        <div class="form-group">
+                            <label for="regPassword">Password</label>
+                            <input type="password" id="regPassword" placeholder="Enter password">
+                        </div>
+                        <div class="form-group">
+                            <label for="role">Role</label>
+                            <select id="role">
+                                <option value="ADMIN">Admin</option>
+                                <option value="EMPLOYEE">Employee</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-success" onclick="register()">Register</button>
+                        <button class="btn btn-secondary" onclick="showLoginForm()">Back to Login</button>
+                    </div>
+
+                    <div id="userInfo" class="hidden">
+                        <div class="status success">
+                            <strong>Logged in as:</strong> <span id="currentUser"></span>
+                        </div>
+                        <button class="btn btn-secondary" onclick="logout()">Logout</button>
+                    </div>
+                </div>
+
+                <!-- Document Upload Section -->
+                <div class="section" id="uploadSection">
+                    <h3>📄 Upload Document</h3>
+                    <div class="file-upload" onclick="triggerFileInput()">
+                        <div class="upload-icon">📁</div>
+                        <p>Click to select PDF or text file</p>
+                        <input type="file" id="fileInput" accept=".pdf,.txt,.md,.json,.xml,.csv,.log">
+                    </div>
+                    <button class="btn btn-success" onclick="uploadDocument()" style="margin-top: 15px;">Upload Document</button>
+                </div>
+
+                <!-- Document List Section -->
+                <div class="section">
+                    <h3>📚 Documents</h3>
+                    <button class="btn" onclick="loadDocuments()">Refresh Documents</button>
+                    <div id="documentList" class="document-list">
+                        <div class="loading">No documents loaded</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content">
+                <!-- Chat Section -->
+                <div class="section">
+                    <h3>💬 Ask Questions</h3>
+                    <div class="form-group">
+                        <label for="selectedDocument">Select Document:</label>
+                        <select id="selectedDocument">
+                            <option value="">Choose a document first</option>
+                        </select>
+                    </div>
+                    <div class="chat-container">
+                        <div id="chatMessages" class="chat-messages">
+                            <div class="message bot">
+                                👋 Hello! I'm AiBot. Select a document and ask me any questions about it!
+                            </div>
+                        </div>
+                        <div class="chat-input">
+                            <input type="text" id="questionInput" placeholder="Type your question here..." onkeypress="handleKeyPress(event)">
+                            <button onclick="askQuestion()">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    
+    <script>
+        let currentToken = null;
+        let currentUser = null;
+        let documents = [];
+        let selectedFile = null;
+        let stompClient = null;
+        let sessionId = null;
+
+        // Authentication Functions
+        function showRegisterForm() {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('registerForm').classList.remove('hidden');
+        }
+
+        function showLoginForm() {
+            document.getElementById('registerForm').classList.add('hidden');
+            document.getElementById('loginForm').classList.remove('hidden');
+        }
+
+        async function register() {
+            const username = document.getElementById('regUsername').value;
+            const password = document.getElementById('regPassword').value;
+            const role = document.getElementById('role').value;
+
+            if (!username || !password) {
+                showStatus('Please fill in all fields', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password, role })
+                });
+
+                if (response.ok) {
+                    showStatus('Registration successful! Please login.', 'success');
+                    showLoginForm();
+                } else {
+                    const error = await response.text();
+                    showStatus('Registration failed: ' + error, 'error');
+                }
+            } catch (error) {
+                showStatus('Registration failed: ' + error.message, 'error');
+            }
+        }
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (!username || !password) {
+                showStatus('Please fill in all fields', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentToken = data.token;
+                    currentUser = username;
+                    
+                    // Store in localStorage for persistence
+                    localStorage.setItem('aibot_token', currentToken);
+                    localStorage.setItem('aibot_user', currentUser);
+                    
+                    showUserInfo();
+                    showStatus('Login successful! Welcome, ' + username + '!', 'success');
+                    loadDocuments();
+                } else {
+                    const error = await response.text();
+                    showStatus('Login failed: ' + error, 'error');
+                }
+            } catch (error) {
+                showStatus('Login failed: ' + error.message, 'error');
+            }
+        }
+
+        function logout() {
+            currentToken = null;
+            currentUser = null;
+            documents = [];
+            
+            // Clear localStorage
+            localStorage.removeItem('aibot_token');
+            localStorage.removeItem('aibot_user');
+            
+            // Hide header user info
+            const headerUserInfo = document.getElementById('headerUserInfo');
+            if (headerUserInfo) {
+                headerUserInfo.classList.add('hidden');
+            }
+            
+            showLoginForm();
+            clearChat();
+            showStatus('Logged out successfully', 'info');
+        }
+
+        function showUserInfo() {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('registerForm').classList.add('hidden');
+            document.getElementById('userInfo').classList.remove('hidden');
+            
+            const currentUserElement = document.getElementById('currentUser');
+            if (currentUserElement) {
+                currentUserElement.textContent = currentUser;
+            }
+            
+            // Update header user info
+            const headerUserInfo = document.getElementById('headerUserInfo');
+            const headerUsername = document.getElementById('headerUsername');
+            if (headerUserInfo && headerUsername) {
+                headerUsername.textContent = currentUser;
+                headerUserInfo.classList.remove('hidden');
+            }
+            
+            // Connect to WebSocket
+            connectWebSocket();
+        }
+
+        // Document Functions
+        async function uploadDocument() {
+            console.log('Upload function called');
+            console.log('Selected file from global variable:', selectedFile ? selectedFile.name : 'No file');
+            
+            // Use the globally stored file instead of file input
+            const file = selectedFile;
+            
+            if (!file) {
+                console.error('No file selected');
+                showStatus('Please select a file first', 'error');
+                return;
+            }
+
+            if (!currentToken) {
+                showStatus('Please login first', 'error');
+                return;
+            }
+
+            if (!currentUser) {
+                showStatus('User information not available', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('uploadedBy', currentUser);
+
+            console.log('Uploading file:', file.name, 'by user:', currentUser);
+            console.log('Token:', currentToken ? 'Present' : 'Missing');
+
+            try {
+                const response = await fetch('/documents/upload', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + currentToken
+                    },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    console.log('Upload response:', result);
+                    showStatus('Document uploaded successfully!', 'success');
+                    
+                    // Reset the upload display
+                    resetFileUpload();
+                    loadDocuments();
+                } else {
+                    let errorMessage = 'Upload failed';
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error || errorMessage;
+                    } catch (e) {
+                        const errorText = await response.text();
+                        errorMessage = errorText || errorMessage;
+                    }
+                    showStatus('Upload failed: ' + errorMessage, 'error');
+                }
+            } catch (error) {
+                showStatus('Upload failed: ' + error.message, 'error');
+            }
+        }
+
+        async function loadDocuments() {
+            if (!currentToken) return;
+
+            try {
+                const response = await fetch('/documents', {
+                    headers: {
+                        'Authorization': 'Bearer ' + currentToken
+                    }
+                });
+
+                if (response.ok) {
+                    documents = await response.json();
+                    displayDocuments();
+                    updateDocumentSelect();
+                } else {
+                    showStatus('Failed to load documents', 'error');
+                }
+            } catch (error) {
+                showStatus('Failed to load documents: ' + error.message, 'error');
+            }
+        }
+
+        function displayDocuments() {
+            const documentList = document.getElementById('documentList');
+            
+            if (documents.length === 0) {
+                documentList.innerHTML = '<div class="loading">No documents available</div>';
+                return;
+            }
+
+            documentList.innerHTML = documents.map(doc => `
+                <div class="document-item" onclick="selectDocument(${doc.id})">
+                    <div class="document-name">${doc.fileName}</div>
+                    <div class="document-meta">
+                        Uploaded by: ${doc.uploadedBy}<br>
+                        Date: ${new Date(doc.uploadedAt).toLocaleDateString()}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateDocumentSelect() {
+            const select = document.getElementById('selectedDocument');
+            select.innerHTML = '<option value="">Choose a document</option>' +
+                documents.map(doc => `<option value="${doc.id}">${doc.fileName}</option>`).join('');
+        }
+
+        function selectDocument(documentId) {
+            document.getElementById('selectedDocument').value = documentId;
+        }
+
+        // WebSocket Functions
+        function connectWebSocket() {
+            const socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+            
+            stompClient.connect({}, function (frame) {
+                console.log('Connected to WebSocket: ' + frame);
+                
+                // Subscribe to personal queue
+                stompClient.subscribe('/user/queue/chat', function (message) {
+                    const chatMessage = JSON.parse(message.body);
+                    handleWebSocketMessage(chatMessage);
+                });
+                
+                // Subscribe to public topic
+                stompClient.subscribe('/topic/public', function (message) {
+                    const chatMessage = JSON.parse(message.body);
+                    handleWebSocketMessage(chatMessage);
+                });
+            }, function (error) {
+                console.log('WebSocket connection error: ' + error);
+                // Fallback to REST API
+                setTimeout(connectWebSocket, 5000);
+            });
+        }
+
+        function handleWebSocketMessage(chatMessage) {
+            switch (chatMessage.type) {
+                case 'QUESTION':
+                    addMessage(chatMessage.content, 'user');
+                    break;
+                case 'ANSWER':
+                    addMessage(chatMessage.content, 'bot');
+                    break;
+                case 'TYPING':
+                    // Handle typing indicator
+                    showTypingIndicator(chatMessage.content);
+                    break;
+                case 'ERROR':
+                    addMessage(chatMessage.content, 'bot');
+                    break;
+            }
+        }
+
+        function showTypingIndicator(message) {
+            // Remove existing typing indicators
+            const existingTyping = document.querySelector('.typing-indicator');
+            if (existingTyping) {
+                existingTyping.remove();
+            }
+            
+            if (message && message !== '🤔 Thinking...') {
+                const typingDiv = document.createElement('div');
+                typingDiv.className = 'typing-indicator message bot';
+                typingDiv.textContent = message;
+                document.getElementById('chatMessages').appendChild(typingDiv);
+                document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+            }
+        }
+
+        // Chat Functions
+        async function askQuestion() {
+            const question = document.getElementById('questionInput').value.trim();
+            const documentId = document.getElementById('selectedDocument').value;
+
+            if (!question) {
+                showStatus('Please enter a question', 'error');
+                return;
+            }
+
+            if (!documentId) {
+                showStatus('Please select a document first', 'error');
+                return;
+            }
+
+            if (!currentToken) {
+                showStatus('Please login first', 'error');
+                return;
+            }
+
+            // Add user message to chat
+            addMessage(question, 'user');
+            document.getElementById('questionInput').value = '';
+
+            // Use WebSocket if available, otherwise fallback to REST
+            if (stompClient && stompClient.connected) {
+                // Send via WebSocket
+                stompClient.send("/app/chat.askQuestion", {}, JSON.stringify({
+                    question: question,
+                    documentId: documentId,
+                    username: currentUser,
+                    sessionId: sessionId
+                }));
+            } else {
+                // Fallback to REST API
+                const loadingId = addMessage('🤔 Thinking...', 'bot');
+                
+                try {
+                    const response = await fetch('/query/ask', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + currentToken
+                        },
+                        body: JSON.stringify({
+                            question: question,
+                            documentId: parseInt(documentId),
+                            username: currentUser
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        replaceMessage(loadingId, data.answer, 'bot');
+                    } else {
+                        const error = await response.text();
+                        replaceMessage(loadingId, 'Sorry, I encountered an error: ' + error, 'bot');
+                    }
+                } catch (error) {
+                    replaceMessage(loadingId, 'Sorry, I encountered an error: ' + error.message, 'bot');
+                }
+            }
+        }
+
+        function addMessage(text, type) {
+            const messagesDiv = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            const messageId = Date.now();
+            messageDiv.className = `message ${type}`;
+            messageDiv.id = `message-${messageId}`;
+            messageDiv.textContent = text;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            return messageId;
+        }
+
+        function replaceMessage(messageId, text, type) {
+            const messageDiv = document.getElementById(`message-${messageId}`);
+            if (messageDiv) {
+                messageDiv.className = `message ${type}`;
+                messageDiv.textContent = text;
+            }
+        }
+
+        function clearChat() {
+            document.getElementById('chatMessages').innerHTML = `
+                <div class="message bot">
+                    👋 Hello! I'm AiBot. Select a document and ask me any questions about it!
+                </div>
+            `;
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                askQuestion();
+            }
+        }
+
+        // Utility Functions
+        function showStatus(message, type) {
+            // Remove existing status messages
+            const existingStatus = document.querySelector('.status');
+            if (existingStatus) {
+                existingStatus.remove();
+            }
+
+            // Create new status message
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+            
+            // Insert after the first h3 in sidebar
+            const sidebar = document.querySelector('.sidebar');
+            const firstH3 = sidebar.querySelector('h3');
+            firstH3.parentNode.insertBefore(statusDiv, firstH3.nextSibling);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (statusDiv.parentNode) {
+                    statusDiv.remove();
+                }
+            }, 5000);
+        }
+
+        // File input functions
+        function triggerFileInput() {
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput) {
+                fileInput.click();
+            } else {
+                console.error('File input not found');
+                showStatus('File input not found. Please refresh the page.', 'error');
+            }
+        }
+
+        function setupFileInputHandler() {
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput) {
+                fileInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        selectedFile = file; // Store the selected file globally
+                        console.log('File selected and stored:', file.name);
+                        
+                        const uploadDiv = document.querySelector('.file-upload');
+                        if (uploadDiv) {
+                            // Update the display without replacing the file input
+                            const iconDiv = uploadDiv.querySelector('.upload-icon');
+                            const textDiv = uploadDiv.querySelector('p');
+                            
+                            if (iconDiv) iconDiv.textContent = '✅';
+                            if (textDiv) {
+                                textDiv.innerHTML = `Selected: ${file.name}<br><span style="font-size: 12px; color: #6c757d;">Size: ${(file.size / 1024).toFixed(1)} KB</span>`;
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function resetFileUpload() {
+            selectedFile = null; // Clear the global file variable
+            const uploadDiv = document.querySelector('.file-upload');
+            if (uploadDiv) {
+                uploadDiv.innerHTML = `
+                    <div class="upload-icon">📁</div>
+                    <p>Click to select PDF or text file</p>
+                    <input type="file" id="fileInput" accept=".pdf,.txt,.md,.json,.xml,.csv,.log">
+                `;
+                // Re-setup the file input handler
+                setupFileInputHandler();
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Setup file input handler
+            setupFileInputHandler();
+            
+            // Generate session ID
+            sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            // Check if user is already logged in (from localStorage)
+            const savedToken = localStorage.getItem('aibot_token');
+            const savedUser = localStorage.getItem('aibot_user');
+            
+            if (savedToken && savedUser) {
+                currentToken = savedToken;
+                currentUser = savedUser;
+                showUserInfo();
+                loadDocuments();
+            }
+        });
+    </script>
+</body>
+</html>
+
