@@ -10,6 +10,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.RestClientException;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -90,29 +93,45 @@ public class VectorRagService {
     }
 
     /**
-     * Generate embeddings using OpenAI API
+     * Generate embeddings using OpenAI API with retry/backoff and caching
      */
     private List<Double> generateEmbedding(String text) {
+        // Return cached embedding if present
+        List<Double> cached = embeddingCache.get(text);
+        if (cached != null) {
+            return cached;
+        }
+
         try {
             String url = "https://api.openai.com/v1/embeddings";
+            
+            // Debug: Check if API key is loaded
+            System.out.println("OpenAI API Key loaded: " + (openaiApiKey != null ? openaiApiKey.substring(0, Math.min(20, openaiApiKey.length())) + "..." : "NULL"));
             
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setBearerAuth(openaiApiKey);
 
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "text-embedding-3-small");
+            requestBody.put("model", "text-embedding-ada-002");
             requestBody.put("input", text);
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
             
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            ResponseEntity<Map> response = postWithRetry(url, request, 5);
             
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+            // Debug: Log response details
+            System.out.println("OpenAI API Response Status: " + (response != null ? response.getStatusCode() : "NULL"));
+            System.out.println("OpenAI API Response Body: " + (response != null && response.getBody() != null ? response.getBody().toString() : "NULL"));
+            
+            if (response != null && response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 List<Map<String, Object>> data = (List<Map<String, Object>>) response.getBody().get("data");
                 if (data != null && !data.isEmpty()) {
                     List<Double> embedding = (List<Double>) data.get(0).get("embedding");
-                    return embedding;
+                    if (embedding != null) {
+                        embeddingCache.put(text, embedding);
+                        return embedding;
+                    }
                 }
             }
             
@@ -223,7 +242,7 @@ public class VectorRagService {
     }
 
     /**
-     * Generate answer using OpenAI with retrieved context
+     * Generate answer using OpenAI with retrieved context (with retry/backoff)
      */
     private String generateAnswerWithOpenAI(String question, String context) {
         try {
@@ -248,9 +267,9 @@ public class VectorRagService {
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
             
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
+            ResponseEntity<Map> response = postWithRetry(url, request, 5);
             
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+            if (response != null && response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 List<Map<String, Object>> choices = (List<Map<String, Object>>) response.getBody().get("choices");
                 if (choices != null && !choices.isEmpty()) {
                     Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
@@ -262,6 +281,61 @@ public class VectorRagService {
             
         } catch (Exception e) {
             return "Error calling OpenAI API: " + e.getMessage();
+        }
+    }
+
+    /**
+     * HTTP POST with retry/backoff for handling 429/5xx
+     */
+    private ResponseEntity<Map> postWithRetry(String url, HttpEntity<Map<String, Object>> request, int maxAttempts) {
+        long baseDelayMs = 500L;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                return restTemplate.postForEntity(url, request, Map.class);
+            } catch (HttpClientErrorException e) {
+                int status = e.getStatusCode().value();
+                if (status == 429) {
+                    // Respect Retry-After header if present
+                    long delay = parseRetryAfterMillis(e.getResponseHeaders());
+                    if (delay <= 0) {
+                        delay = (long) Math.min(10000, baseDelayMs * Math.pow(2, attempt - 1));
+                    }
+                    sleep(delay);
+                    continue;
+                }
+                // Other 4xx: do not retry
+                throw e;
+            } catch (HttpServerErrorException e) {
+                // Retry on 5xx
+                long delay = (long) Math.min(10000, baseDelayMs * Math.pow(2, attempt - 1));
+                sleep(delay);
+            } catch (RestClientException e) {
+                // Network/transient error: retry
+                long delay = (long) Math.min(10000, baseDelayMs * Math.pow(2, attempt - 1));
+                sleep(delay);
+            }
+        }
+        return null;
+    }
+
+    private long parseRetryAfterMillis(HttpHeaders headers) {
+        if (headers == null) return 0L;
+        String retryAfter = headers.getFirst("Retry-After");
+        if (retryAfter == null) return 0L;
+        try {
+            // Retry-After seconds
+            long seconds = Long.parseLong(retryAfter.trim());
+            return seconds * 1000L;
+        } catch (NumberFormatException ex) {
+            return 0L;
+        }
+    }
+
+    private void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
         }
     }
 
