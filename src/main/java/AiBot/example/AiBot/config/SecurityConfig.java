@@ -46,6 +46,7 @@ public class SecurityConfig {
                 .requestMatchers("/index.html").permitAll() // allow access to main UI
                 .requestMatchers("/favicon.ico").permitAll() // allow favicon
                 .requestMatchers("/auth/**").permitAll() // allow register & login
+                .requestMatchers("/ws/**").permitAll() // allow WebSocket handshake (SockJS /ws/info)
                 .requestMatchers("/static/**", "/css/**", "/js/**", "/images/**").permitAll() // allow static resources
                 .requestMatchers("/error").permitAll() // allow error pages
                 .requestMatchers(HttpMethod.GET, "/documents/**").hasAnyRole("ADMIN", "EMPLOYEE")
