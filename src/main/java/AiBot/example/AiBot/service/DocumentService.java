@@ -72,24 +72,40 @@ public class DocumentService {
         try {
             String documentId = savedDocument.getId().toString();
             
-            // Use appropriate RAG service (prefer vector-based RAG with OpenAI)
-            if (vectorRagService != null) {
-                vectorRagService.processDocument(content, documentId);
-            } else if (fallbackRagService != null) {
+            // Use fallback service first to avoid API quota issues
+            if (fallbackRagService != null) {
                 fallbackRagService.processDocument(content, documentId);
-            } else if (realRagService != null) {
-                realRagService.processDocument(content, documentId);
+                System.out.println("Using FallbackRagService due to API limitations");
             } else if (mockRagService != null) {
                 mockRagService.processDocument(content, documentId);
+                System.out.println("Using MockRagService for development");
+            } else {
+                // Try OpenAI services only if fallback isn't available
+                try {
+                    if (vectorRagService != null) {
+                        vectorRagService.processDocument(content, documentId);
+                    } else if (realRagService != null) {
+                        realRagService.processDocument(content, documentId);
+                    }
+                } catch (Exception apiError) {
+                    System.err.println("OpenAI API failed, using fallback: " + apiError.getMessage());
+                    if (fallbackRagService != null) {
+                        fallbackRagService.processDocument(content, documentId);
+                    }
+                }
             }
             
-            // Generate summary using AI
+            // Generate summary using AI with fallback
             String summary = generateSummary(content);
             savedDocument.setSummary(summary);
             documentRepository.save(savedDocument);
         } catch (Exception e) {
             // Log error but don't fail the upload
             System.err.println("Failed to process document with RAG: " + e.getMessage());
+            // Set a basic summary as fallback
+            String basicSummary = "Document uploaded successfully. Content length: " + content.length() + " characters.";
+            savedDocument.setSummary(basicSummary);
+            documentRepository.save(savedDocument);
         }
 
         return savedDocument;
@@ -140,17 +156,30 @@ public class DocumentService {
         try {
             String documentIdStr = documentId.toString();
             
-            // Use appropriate RAG service (prefer vector-based RAG with OpenAI)
-            if (vectorRagService != null) {
-                return vectorRagService.askQuestion(question, documentIdStr);
-            } else if (fallbackRagService != null) {
+            // Use fallback service first to avoid API quota issues
+            if (fallbackRagService != null) {
                 return fallbackRagService.askQuestion(question, documentIdStr);
-            } else if (realRagService != null) {
-                return realRagService.askQuestion(question, documentIdStr);
             } else if (mockRagService != null) {
                 return mockRagService.askQuestion(question, documentIdStr);
             } else {
-                return "RAG service not available.";
+                // Try OpenAI services only if fallback isn't available
+                try {
+                    if (vectorRagService != null) {
+                        return vectorRagService.askQuestion(question, documentIdStr);
+                    } else if (realRagService != null) {
+                        return realRagService.askQuestion(question, documentIdStr);
+                    } else {
+                        return "No RAG service available.";
+                    }
+                } catch (Exception apiError) {
+                    System.err.println("OpenAI API failed for question: " + apiError.getMessage());
+                    // Fallback to simple text search if API fails
+                    if (fallbackRagService != null) {
+                        return fallbackRagService.askQuestion(question, documentIdStr);
+                    } else {
+                        return "OpenAI API quota exceeded. Please try again later or upgrade your plan.";
+                    }
+                }
             }
         } catch (Exception e) {
             return "Error processing question: " + e.getMessage();

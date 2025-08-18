@@ -105,32 +105,47 @@ public class FallbackRagService {
         StringBuilder response = new StringBuilder();
         
         if (!relevantChunks.isEmpty()) {
-            response.append("Based on the document content, here's what I found:\n\n");
+            response.append("📄 **Based on the document content:**\n\n");
             
             // Show more relevant content
-            for (String chunk : relevantChunks) {
-                response.append("• ").append(chunk.substring(0, Math.min(300, chunk.length())));
-                if (chunk.length() > 300) response.append("...");
+            for (int i = 0; i < relevantChunks.size(); i++) {
+                String chunk = relevantChunks.get(i);
+                response.append("**Section ").append(i + 1).append(":**\n");
+                response.append(chunk.substring(0, Math.min(400, chunk.length())));
+                if (chunk.length() > 400) response.append("...");
                 response.append("\n\n");
             }
             
-            // Try to provide a direct answer if possible
-            if (lowerQuestion.contains("annual") || lowerQuestion.contains("leave") || lowerQuestion.contains("vacation")) {
-                response.append("💡 **Summary**: Based on the document, ");
-                if (lowerQuestion.contains("how many")) {
-                    response.append("the specific number of annual leaves should be mentioned in the relevant sections above.");
-                } else {
-                    response.append("annual leave policies are covered in the document.");
-                }
+            // Try to provide a direct answer based on question patterns
+            response.append("💡 **Analysis**: ");
+            if (lowerQuestion.contains("how many") || lowerQuestion.contains("number")) {
+                response.append("Look for specific numbers or quantities in the sections above.");
+            } else if (lowerQuestion.contains("when") || lowerQuestion.contains("date")) {
+                response.append("Check for dates, deadlines, or time-related information in the relevant sections.");
+            } else if (lowerQuestion.contains("what") || lowerQuestion.contains("define")) {
+                response.append("The definitions and explanations should be found in the relevant sections above.");
+            } else if (lowerQuestion.contains("who") || lowerQuestion.contains("responsible")) {
+                response.append("Look for names, roles, or responsibilities mentioned in the sections above.");
+            } else if (lowerQuestion.contains("where")) {
+                response.append("Check for location or department information in the relevant sections.");
+            } else if (lowerQuestion.contains("why") || lowerQuestion.contains("reason")) {
+                response.append("The rationale or reasons should be explained in the relevant sections above.");
+            } else if (lowerQuestion.contains("how")) {
+                response.append("Look for step-by-step processes or procedures in the sections above.");
+            } else {
+                response.append("The answer to your question should be found in the relevant sections above.");
             }
         } else {
-            response.append("I couldn't find specific information about your question in the document. ");
-            response.append("Please try rephrasing your question or check if the information is in a different section.");
+            response.append("❓ **No specific matches found.**\n\n");
+            response.append("I couldn't find content directly related to your question. This could mean:\n");
+            response.append("• The information might be in a different document\n");
+            response.append("• Try using different keywords\n");
+            response.append("• The document might not contain this specific information\n\n");
+            response.append("**Suggestion**: Try rephrasing your question with different terms or check if the information exists in the document.");
         }
         
-        // Add a note about OpenAI requirement
-        response.append("\n\n---\n*Note: This is a fallback response. For better AI-powered answers with OpenAI, ");
-        response.append("please set your API key in application.properties.*");
+        // Add a note about service type
+        response.append("\n\n---\n*Note: Using text-based search service. For AI-powered semantic search, OpenAI API access is required.*");
         
         return response.toString();
     }
