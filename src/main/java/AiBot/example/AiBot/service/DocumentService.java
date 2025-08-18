@@ -72,25 +72,14 @@ public class DocumentService {
         try {
             String documentId = savedDocument.getId().toString();
             
-            // Debug: Log which RAG service is available
-            System.out.println("=== RAG Service Debug ===");
-            System.out.println("vectorRagService: " + (vectorRagService != null ? "AVAILABLE" : "NULL"));
-            System.out.println("fallbackRagService: " + (fallbackRagService != null ? "AVAILABLE" : "NULL"));
-            System.out.println("realRagService: " + (realRagService != null ? "AVAILABLE" : "NULL"));
-            System.out.println("mockRagService: " + (mockRagService != null ? "AVAILABLE" : "NULL"));
-            
             // Use appropriate RAG service (prefer vector-based RAG with OpenAI)
             if (vectorRagService != null) {
-                System.out.println("Using VectorRagService for document processing");
                 vectorRagService.processDocument(content, documentId);
             } else if (fallbackRagService != null) {
-                System.out.println("Using FallbackRagService for document processing");
                 fallbackRagService.processDocument(content, documentId);
             } else if (realRagService != null) {
-                System.out.println("Using RealRagService for document processing");
                 realRagService.processDocument(content, documentId);
             } else if (mockRagService != null) {
-                System.out.println("Using MockRagService for document processing");
                 mockRagService.processDocument(content, documentId);
             }
             
@@ -151,25 +140,14 @@ public class DocumentService {
         try {
             String documentIdStr = documentId.toString();
             
-            // Debug: Log which RAG service is available for questions
-            System.out.println("=== RAG Service Debug (Question) ===");
-            System.out.println("vectorRagService: " + (vectorRagService != null ? "AVAILABLE" : "NULL"));
-            System.out.println("fallbackRagService: " + (fallbackRagService != null ? "AVAILABLE" : "NULL"));
-            System.out.println("realRagService: " + (realRagService != null ? "AVAILABLE" : "NULL"));
-            System.out.println("mockRagService: " + (mockRagService != null ? "AVAILABLE" : "NULL"));
-            
             // Use appropriate RAG service (prefer vector-based RAG with OpenAI)
             if (vectorRagService != null) {
-                System.out.println("Using VectorRagService for question answering");
                 return vectorRagService.askQuestion(question, documentIdStr);
             } else if (fallbackRagService != null) {
-                System.out.println("Using FallbackRagService for question answering");
                 return fallbackRagService.askQuestion(question, documentIdStr);
             } else if (realRagService != null) {
-                System.out.println("Using RealRagService for question answering");
                 return realRagService.askQuestion(question, documentIdStr);
             } else if (mockRagService != null) {
-                System.out.println("Using MockRagService for question answering");
                 return mockRagService.askQuestion(question, documentIdStr);
             } else {
                 return "RAG service not available.";
