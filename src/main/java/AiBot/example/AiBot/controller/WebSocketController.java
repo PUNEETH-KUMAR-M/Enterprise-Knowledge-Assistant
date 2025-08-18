@@ -37,42 +37,45 @@ public class WebSocketController {
     }
 
     @MessageMapping("/chat.askQuestion")
-    public void askQuestion(@Payload Map<String, Object> request) {
+    public void askQuestion(@Payload Map<String, Object> request, SimpMessageHeaderAccessor headerAccessor) {
         String username = (String) request.get("username");
         String question = (String) request.get("question");
         String documentId = request.get("documentId").toString();
-        String sessionId = (String) request.get("sessionId");
+        String sessionId = headerAccessor.getSessionId();
 
-        // Send typing indicator
+        // Send typing indicator to the current STOMP session
         ChatMessage typingMessage = new ChatMessage("TYPING", "🤔 Thinking...", "AiBot", documentId);
-        messagingTemplate.convertAndSendToUser(sessionId, "/queue/chat", typingMessage);
+        sendToSessionQueue(sessionId, typingMessage);
 
         // Process question asynchronously
         CompletableFuture.runAsync(() -> {
             try {
-                // Process the question using existing service
                 Map<String, Object> response = queryService.askQuestion(question, username, Long.valueOf(documentId));
                 String answer = (String) response.get("answer");
 
-                // Send the answer
                 ChatMessage answerMessage = new ChatMessage("ANSWER", answer, "AiBot", documentId);
-                messagingTemplate.convertAndSendToUser(sessionId, "/queue/chat", answerMessage);
-
+                sendToSessionQueue(sessionId, answerMessage);
             } catch (Exception e) {
-                // Send error message
                 ChatMessage errorMessage = new ChatMessage("ERROR", "Sorry, I encountered an error: " + e.getMessage(), "AiBot", documentId);
-                messagingTemplate.convertAndSendToUser(sessionId, "/queue/chat", errorMessage);
+                sendToSessionQueue(sessionId, errorMessage);
             }
         });
     }
 
     @MessageMapping("/chat.typing")
-    public void typing(@Payload Map<String, Object> request) {
+    public void typing(@Payload Map<String, Object> request, SimpMessageHeaderAccessor headerAccessor) {
         String username = (String) request.get("username");
         String documentId = request.get("documentId").toString();
-        String sessionId = (String) request.get("sessionId");
+        String sessionId = headerAccessor.getSessionId();
 
         ChatMessage typingMessage = new ChatMessage("TYPING", username + " is typing...", username, documentId);
-        messagingTemplate.convertAndSendToUser(sessionId, "/queue/chat", typingMessage);
+        sendToSessionQueue(sessionId, typingMessage);
+    }
+
+    private void sendToSessionQueue(String sessionId, ChatMessage message) {
+        SimpMessageHeaderAccessor headers = SimpMessageHeaderAccessor.create();
+        headers.setSessionId(sessionId);
+        headers.setLeaveMutable(true);
+        messagingTemplate.convertAndSendToUser(sessionId, "/queue/chat", message, headers.getMessageHeaders());
     }
 }

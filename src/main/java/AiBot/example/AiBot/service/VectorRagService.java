@@ -105,8 +105,7 @@ public class VectorRagService {
         try {
             String url = "https://api.openai.com/v1/embeddings";
             
-            // Debug: Check if API key is loaded
-            System.out.println("OpenAI API Key loaded: " + (openaiApiKey != null ? openaiApiKey.substring(0, Math.min(20, openaiApiKey.length())) + "..." : "NULL"));
+
             
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -120,9 +119,7 @@ public class VectorRagService {
             
             ResponseEntity<Map> response = postWithRetry(url, request, 5);
             
-            // Debug: Log response details
-            System.out.println("OpenAI API Response Status: " + (response != null ? response.getStatusCode() : "NULL"));
-            System.out.println("OpenAI API Response Body: " + (response != null && response.getBody() != null ? response.getBody().toString() : "NULL"));
+
             
             if (response != null && response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 List<Map<String, Object>> data = (List<Map<String, Object>>) response.getBody().get("data");
