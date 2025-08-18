@@ -57,12 +57,21 @@ For testing without OpenAI API key:
    cd AiBot
    ```
 
-2. **Run in development mode:**
+2. **Set up environment variables:**
+   ```bash
+   # Copy the example environment file
+   cp .env.example .env
+   
+   # Edit .env and add your OpenAI API key
+   OPENAI_API_KEY=your-actual-openai-api-key-here
+   ```
+
+3. **Run in development mode:**
    ```bash
    mvn spring-boot:run -Dspring.profiles.active=dev
    ```
 
-3. **Access the application:**
+4. **Access the application:**
    - Frontend: http://localhost:8080
    - H2 Console: http://localhost:8080/h2-console
 

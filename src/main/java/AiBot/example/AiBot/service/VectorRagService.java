@@ -132,13 +132,18 @@ public class VectorRagService {
             createVectorTableIfNotExists(conn);
             
             // Insert chunks and embeddings
-            String sql = "INSERT INTO document_chunks (document_id, chunk_text, chunk_embedding) VALUES (?, ?, ?)";
+            String sql = "INSERT INTO document_chunks (document_id, chunk_text, chunk_embedding) VALUES (?, ?, ?::vector)";
             
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 for (int i = 0; i < chunks.size(); i++) {
+                    // Convert Double list to Float array for pgvector compatibility
+                    Float[] embeddingArray = embeddings.get(i).stream()
+                        .map(Double::floatValue)
+                        .toArray(Float[]::new);
+                    
                     stmt.setString(1, documentId);
                     stmt.setString(2, chunks.get(i));
-                    stmt.setArray(3, conn.createArrayOf("float8", embeddings.get(i).toArray()));
+                    stmt.setArray(3, conn.createArrayOf("float4", embeddingArray));
                     stmt.executeUpdate();
                 }
             }
@@ -184,18 +189,23 @@ public class VectorRagService {
      */
     private List<String> findSimilarChunks(List<Double> queryEmbedding, String documentId, int limit) {
         try (Connection conn = dataSource.getConnection()) {
+            // Convert Double list to float array for pgvector compatibility
+            Float[] embeddingArray = queryEmbedding.stream()
+                .map(Double::floatValue)
+                .toArray(Float[]::new);
+            
             String sql = """
-                SELECT chunk_text, chunk_embedding <=> ? as distance
+                SELECT chunk_text, chunk_embedding <=> ?::vector as distance
                 FROM document_chunks 
                 WHERE document_id = ?
-                ORDER BY chunk_embedding <=> ?
+                ORDER BY chunk_embedding <=> ?::vector
                 LIMIT ?
                 """;
             
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-                stmt.setArray(1, conn.createArrayOf("float8", queryEmbedding.toArray()));
+                stmt.setArray(1, conn.createArrayOf("float4", embeddingArray));
                 stmt.setString(2, documentId);
-                stmt.setArray(3, conn.createArrayOf("float8", queryEmbedding.toArray()));
+                stmt.setArray(3, conn.createArrayOf("float4", embeddingArray));
                 stmt.setInt(4, limit);
                 
                 List<String> chunks = new ArrayList<>();

@@ -30,6 +30,7 @@
 		<java.version>21</java.version>
 		<spring-ai.version>1.0.1</spring-ai.version>
 	</properties>
+	
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -111,8 +112,6 @@
 			<artifactId>spring-boot-starter-websocket</artifactId>
 		</dependency>
 	</dependencies>
-
-
 
 	<build>
 		<plugins>
