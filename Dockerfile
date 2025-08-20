@@ -18,11 +18,15 @@ WORKDIR /app
 # Copy fat jar
 COPY --from=build /app/target/*.jar /app/app.jar
 
+# Copy startup script for Render and general usage
+COPY scripts/render-start.sh /usr/local/bin/render-start.sh
+RUN chmod +x /usr/local/bin/render-start.sh
+
 # Default runtime configuration (can be overridden at deploy time)
 ENV SPRING_PROFILES_ACTIVE=prod
 ENV PORT=8080
 
 EXPOSE 8080
 
-# Use shell form to allow env variable expansion for port and JVM opts
-ENTRYPOINT ["/bin/sh","-c","java ${JAVA_OPTS} -XX:+UseG1GC -Djava.security.egd=file:/dev/./urandom -jar /app/app.jar --server.port=${PORT:-8080}"]
+# Start via script that adapts DATABASE_URL if present (Render)
+ENTRYPOINT ["/usr/local/bin/render-start.sh"]
