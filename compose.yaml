@@ -1,0 +1,42 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: aibot-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aibot_db}
+      POSTGRES_USER: ${POSTGRES_USER:-aibot_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aibot_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  app:
+    build: .
+    container_name: aibot-app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-aibot_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-aibot_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      JWT_SECRET: ${JWT_SECRET:-please_replace_with_long_secret_32_bytes_min}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-3600000}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      FILE_UPLOAD_DIR: /data/uploads
+      JAVA_OPTS: ${JAVA_OPTS:--Xms256m -Xmx512m}
+    volumes:
+      - uploads:/data/uploads
+    ports:
+      - "80:8080"
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  uploads:
