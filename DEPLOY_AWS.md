@@ -39,6 +39,34 @@ Set these in `.env`:
 ## 4) Deploy with Docker Compose
 ```bash
 ./scripts/deploy_compose.sh .env
+
+## Enable HTTPS with Caddy (Let's Encrypt)
+
+Prerequisites:
+- Buy or use a domain and create an A record pointing to your EC2 public IP.
+- Open inbound ports 80 and 443 in the EC2 security group.
+
+Steps:
+1. Set environment variables on EC2 (replace with your values):
+   ```bash
+   echo "DOMAIN=your-domain.example" | sudo tee -a /etc/environment
+   echo "EMAIL=your-email@example.com" | sudo tee -a /etc/environment
+   export DOMAIN=your-domain.example
+   export EMAIL=your-email@example.com
+   ```
+2. Update and run Docker Compose:
+   - App now listens on host port 8080.
+   - Caddy proxy listens on 80/443 and terminates TLS automatically.
+   ```bash
+   docker compose up -d --build
+   ```
+3. Verify:
+   - Visit https://$DOMAIN
+   - First issuance may take ~30-60 seconds.
+
+Notes:
+- Certificates are stored in the `caddy_data` volume.
+- If using ECR, log in prior to `docker compose up`.
 ```
 This builds and starts two containers:
 - `db` (PostgreSQL + pgvector)

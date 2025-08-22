@@ -34,9 +34,30 @@ services:
     volumes:
       - uploads:/data/uploads
     ports:
-      - "80:8080"
+      - "8080:8080"
+    restart: unless-stopped
+
+  proxy:
+    image: caddy:2
+    container_name: aibot-proxy
+    depends_on:
+      app:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - ACME_AGREE=true
+      - DOMAIN=${DOMAIN}
+      - EMAIL=${EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
     restart: unless-stopped
 
 volumes:
   db_data:
   uploads:
+  caddy_data:
+  caddy_config:
