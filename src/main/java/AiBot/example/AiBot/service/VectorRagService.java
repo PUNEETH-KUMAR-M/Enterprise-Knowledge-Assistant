@@ -2,14 +2,12 @@ package AiBot.example.AiBot.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -96,11 +94,6 @@ public class VectorRagService {
         try {
             String url = "https://api.openai.com/v1/embeddings";
             
-<<<<<<< HEAD
-=======
-
-            
->>>>>>> 9b1e3f2140defa477632cdbf2ce2500364ed5c25
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setBearerAuth(openaiApiKey);
@@ -113,13 +106,7 @@ public class VectorRagService {
             
             ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
             
-<<<<<<< HEAD
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-=======
-
-            
             if (response != null && response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
->>>>>>> 9b1e3f2140defa477632cdbf2ce2500364ed5c25
                 List<Map<String, Object>> data = (List<Map<String, Object>>) response.getBody().get("data");
                 if (data != null && !data.isEmpty()) {
                     List<Double> embedding = (List<Double>) data.get(0).get("embedding");
