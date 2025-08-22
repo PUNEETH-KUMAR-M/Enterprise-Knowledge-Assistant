@@ -304,6 +304,62 @@
             opacity: 0.7;
             font-style: italic;
         }
+
+        /* Responsive - Mobile First Adjustments */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .main-content {
+                flex-direction: column;
+                min-height: auto;
+            }
+
+            .sidebar {
+                width: 100%;
+                padding: 20px;
+                border-right: none;
+                border-bottom: 1px solid #e9ecef;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .document-list {
+                max-height: 200px;
+            }
+
+            .chat-container {
+                height: 55vh;
+            }
+
+            .message {
+                max-width: 100%;
+            }
+
+            .chat-input {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .chat-input input {
+                margin-right: 0;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -608,7 +664,10 @@
         }
 
         async function loadDocuments() {
-            if (!currentToken) return;
+            if (!currentToken) {
+                showStatus('Please login to load documents', 'info');
+                return;
+            }
 
             try {
                 const response = await fetch('/documents', {
