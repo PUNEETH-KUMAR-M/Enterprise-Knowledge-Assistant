@@ -4,7 +4,6 @@ import AiBot.example.AiBot.model.Document;
 import AiBot.example.AiBot.repository.DocumentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,12 +22,6 @@ public class DocumentService {
 
     @Autowired
     private ChatService chatService;
-
-    @Autowired(required = false)
-    private MockRagService mockRagService;
-
-    @Autowired(required = false)
-    private RealRagService realRagService;
 
     @Autowired(required = false)
     private VectorRagService vectorRagService;
@@ -77,10 +70,6 @@ public class DocumentService {
                 vectorRagService.processDocument(content, documentId);
             } else if (fallbackRagService != null) {
                 fallbackRagService.processDocument(content, documentId);
-            } else if (realRagService != null) {
-                realRagService.processDocument(content, documentId);
-            } else if (mockRagService != null) {
-                mockRagService.processDocument(content, documentId);
             }
             
             // Generate summary using AI
@@ -145,10 +134,6 @@ public class DocumentService {
                 return vectorRagService.askQuestion(question, documentIdStr);
             } else if (fallbackRagService != null) {
                 return fallbackRagService.askQuestion(question, documentIdStr);
-            } else if (realRagService != null) {
-                return realRagService.askQuestion(question, documentIdStr);
-            } else if (mockRagService != null) {
-                return mockRagService.askQuestion(question, documentIdStr);
             } else {
                 return "RAG service not available.";
             }

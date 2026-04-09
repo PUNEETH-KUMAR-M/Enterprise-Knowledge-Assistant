@@ -27,7 +27,7 @@ public class VectorRagService {
     private DataSource dataSource;
 
     private final RestTemplate restTemplate = new RestTemplate();
-    
+
     // Cache for embeddings to avoid regenerating them
     private final Map<String, List<Double>> embeddingCache = new ConcurrentHashMap<>();
 
@@ -39,19 +39,19 @@ public class VectorRagService {
             // 1. Split document into chunks
             List<String> chunks = chunkDocument(content);
             System.out.println("Document " + documentId + " split into " + chunks.size() + " chunks");
-            
+
             // 2. Generate embeddings for each chunk
             List<List<Double>> embeddings = new ArrayList<>();
             for (String chunk : chunks) {
                 List<Double> embedding = generateEmbedding(chunk);
                 embeddings.add(embedding);
             }
-            
+
             // 3. Store chunks and embeddings in vector database
             storeInVectorDatabase(documentId, chunks, embeddings);
-            
+
             System.out.println("Document " + documentId + " processed and stored in vector database");
-            
+
         } catch (Exception e) {
             System.err.println("Error processing document " + documentId + ": " + e.getMessage());
             e.printStackTrace();
@@ -65,23 +65,23 @@ public class VectorRagService {
         try {
             // 1. Generate embedding for the question
             List<Double> questionEmbedding = generateEmbedding(question);
-            
+
             // 2. Find most similar chunks using vector similarity search
             List<String> relevantChunks = findSimilarChunks(questionEmbedding, documentId, 3);
-            
+
             if (relevantChunks.isEmpty()) {
                 return "I couldn't find relevant information in the document to answer your question.";
             }
-            
+
             // 3. Build context from relevant chunks
             StringBuilder context = new StringBuilder();
             for (String chunk : relevantChunks) {
                 context.append(chunk).append("\n\n");
             }
-            
+
             // 4. Generate answer using OpenAI with retrieved context
             return generateAnswerWithOpenAI(question, context.toString());
-            
+
         } catch (Exception e) {
             return "Error processing question: " + e.getMessage();
         }
@@ -93,7 +93,7 @@ public class VectorRagService {
     private List<Double> generateEmbedding(String text) {
         try {
             String url = "https://api.openai.com/v1/embeddings";
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setBearerAuth(openaiApiKey);
@@ -103,9 +103,8 @@ public class VectorRagService {
             requestBody.put("input", text);
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-            
+
             ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
-            
             if (response != null && response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 List<Map<String, Object>> data = (List<Map<String, Object>>) response.getBody().get("data");
                 if (data != null && !data.isEmpty()) {
@@ -113,9 +112,9 @@ public class VectorRagService {
                     return embedding;
                 }
             }
-            
+
             throw new RuntimeException("Failed to generate embedding");
-            
+
         } catch (Exception e) {
             throw new RuntimeException("Error calling OpenAI embedding API: " + e.getMessage());
         }
@@ -128,24 +127,24 @@ public class VectorRagService {
         try (Connection conn = dataSource.getConnection()) {
             // Create table if not exists
             createVectorTableIfNotExists(conn);
-            
+
             // Insert chunks and embeddings
             String sql = "INSERT INTO document_chunks (document_id, chunk_text, chunk_embedding) VALUES (?, ?, ?::vector)";
-            
+
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 for (int i = 0; i < chunks.size(); i++) {
                     // Convert Double list to Float array for pgvector compatibility
                     Float[] embeddingArray = embeddings.get(i).stream()
-                        .map(Double::floatValue)
-                        .toArray(Float[]::new);
-                    
+                            .map(Double::floatValue)
+                            .toArray(Float[]::new);
+
                     stmt.setString(1, documentId);
                     stmt.setString(2, chunks.get(i));
                     stmt.setArray(3, conn.createArrayOf("float4", embeddingArray));
                     stmt.executeUpdate();
                 }
             }
-            
+
         } catch (SQLException e) {
             throw new RuntimeException("Error storing in vector database: " + e.getMessage());
         }
@@ -159,7 +158,7 @@ public class VectorRagService {
         try (PreparedStatement stmt = conn.prepareStatement("CREATE EXTENSION IF NOT EXISTS vector")) {
             stmt.execute();
         }
-        
+
         // Create table for document chunks
         String createTableSql = """
             CREATE TABLE IF NOT EXISTS document_chunks (
@@ -170,11 +169,11 @@ public class VectorRagService {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             """;
-        
+
         try (PreparedStatement stmt = conn.prepareStatement(createTableSql)) {
             stmt.execute();
         }
-        
+
         // Create index for similarity search
         String createIndexSql = "CREATE INDEX IF NOT EXISTS idx_chunk_embedding ON document_chunks USING ivfflat (chunk_embedding vector_cosine_ops)";
         try (PreparedStatement stmt = conn.prepareStatement(createIndexSql)) {
@@ -189,9 +188,9 @@ public class VectorRagService {
         try (Connection conn = dataSource.getConnection()) {
             // Convert Double list to float array for pgvector compatibility
             Float[] embeddingArray = queryEmbedding.stream()
-                .map(Double::floatValue)
-                .toArray(Float[]::new);
-            
+                    .map(Double::floatValue)
+                    .toArray(Float[]::new);
+
             String sql = """
                 SELECT chunk_text, chunk_embedding <=> ?::vector as distance
                 FROM document_chunks 
@@ -199,13 +198,13 @@ public class VectorRagService {
                 ORDER BY chunk_embedding <=> ?::vector
                 LIMIT ?
                 """;
-            
+
             try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                 stmt.setArray(1, conn.createArrayOf("float4", embeddingArray));
                 stmt.setString(2, documentId);
                 stmt.setArray(3, conn.createArrayOf("float4", embeddingArray));
                 stmt.setInt(4, limit);
-                
+
                 List<String> chunks = new ArrayList<>();
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
@@ -214,7 +213,7 @@ public class VectorRagService {
                 }
                 return chunks;
             }
-            
+
         } catch (SQLException e) {
             throw new RuntimeException("Error finding similar chunks: " + e.getMessage());
         }
@@ -226,7 +225,7 @@ public class VectorRagService {
     private String generateAnswerWithOpenAI(String question, String context) {
         try {
             String url = "https://api.openai.com/v1/chat/completions";
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setBearerAuth(openaiApiKey);
@@ -234,20 +233,20 @@ public class VectorRagService {
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", "gpt-4o-mini");
             requestBody.put("messages", Arrays.asList(
-                Map.of("role", "system", "content", 
-                    "You are a helpful assistant that answers questions based on the provided document context. " +
-                    "Only use information from the context to answer questions. If the context doesn't contain " +
-                    "enough information to answer the question, say so. Be concise and accurate."),
-                Map.of("role", "user", "content", 
-                    "Context:\n" + context + "\n\nQuestion: " + question)
+                    Map.of("role", "system", "content",
+                            "You are a helpful assistant that answers questions based on the provided document context. " +
+                                    "Only use information from the context to answer questions. If the context doesn't contain " +
+                                    "enough information to answer the question, say so. Be concise and accurate."),
+                    Map.of("role", "user", "content",
+                            "Context:\n" + context + "\n\nQuestion: " + question)
             ));
             requestBody.put("max_tokens", 500);
             requestBody.put("temperature", 0.3);
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-            
+
             ResponseEntity<Map> response = restTemplate.postForEntity(url, request, Map.class);
-            
+
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 List<Map<String, Object>> choices = (List<Map<String, Object>>) response.getBody().get("choices");
                 if (choices != null && !choices.isEmpty()) {
@@ -255,9 +254,9 @@ public class VectorRagService {
                     return (String) message.get("content");
                 }
             }
-            
+
             return "Failed to generate answer from OpenAI.";
-            
+
         } catch (Exception e) {
             return "Error calling OpenAI API: " + e.getMessage();
         }
@@ -270,7 +269,7 @@ public class VectorRagService {
         // Split by paragraphs first
         String[] paragraphs = content.split("\n\n");
         List<String> chunks = new ArrayList<>();
-        
+
         for (String paragraph : paragraphs) {
             paragraph = paragraph.trim();
             if (!paragraph.isEmpty()) {
@@ -282,7 +281,7 @@ public class VectorRagService {
                 }
             }
         }
-        
+
         return chunks;
     }
 
@@ -292,16 +291,16 @@ public class VectorRagService {
     private List<String> splitLongParagraph(String paragraph) {
         List<String> chunks = new ArrayList<>();
         int maxLength = 1000;
-        
+
         if (paragraph.length() <= maxLength) {
             chunks.add(paragraph);
             return chunks;
         }
-        
+
         // Split by sentences
         String[] sentences = paragraph.split("(?<=[.!?])\\s+");
         StringBuilder currentChunk = new StringBuilder();
-        
+
         for (String sentence : sentences) {
             if (currentChunk.length() + sentence.length() > maxLength) {
                 if (currentChunk.length() > 0) {
@@ -311,11 +310,11 @@ public class VectorRagService {
             }
             currentChunk.append(sentence).append(" ");
         }
-        
+
         if (currentChunk.length() > 0) {
             chunks.add(currentChunk.toString().trim());
         }
-        
+
         return chunks;
     }
 
